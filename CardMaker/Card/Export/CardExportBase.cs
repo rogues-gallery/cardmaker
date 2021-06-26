@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,25 +23,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 using System.Drawing;
+using System.Linq;
+using CardMaker.Data;
 using CardMaker.Events.Managers;
 using CardMaker.XML;
+using Support.Progress;
 
 namespace CardMaker.Card.Export
 {
     public abstract class CardExportBase
     {
         protected Bitmap m_zExportCardBuffer;
-        protected ProjectLayout m_zLastLayout = null;
-
-        protected int ExportLayoutStartIndex { get; private set; }
-        protected int ExportLayoutEndIndex { get; private set; }
-        
+        protected int[] ExportLayoutIndices { get; private set; }
         protected CardRenderer CardRenderer { get; }
+        
+        public IProgressReporter ProgressReporter { get; set; }
 
-        protected CardExportBase(int nLayoutStartIndex, int nLayoutEndIndex)
+        protected CardExportBase(int nLayoutStartIndex, int nLayoutEndIndex) : this(Enumerable.Range(nLayoutStartIndex, nLayoutEndIndex - nLayoutStartIndex).ToArray())
         {
-            ExportLayoutStartIndex = nLayoutStartIndex;
-            ExportLayoutEndIndex = nLayoutEndIndex;
+        }
+
+        protected CardExportBase(int[] arrayExportLayoutIndices)
+        {
+            ExportLayoutIndices = arrayExportLayoutIndices;
             CardRenderer = new CardRenderer
             {
                 CurrentDeck = new Deck()
@@ -56,7 +60,13 @@ namespace CardMaker.Card.Export
         {
             // based on the currently loaded project get the layout based on the index
             var zLayout = ProjectManager.Instance.LoadedProject.Layout[nIdx];
-            CurrentDeck.SetAndLoadLayout(zLayout ?? CurrentDeck.CardLayout, true);
+            CurrentDeck.SetAndLoadLayout(zLayout ?? CurrentDeck.CardLayout, true, 
+                new ProgressReporterProxy()
+                {
+                    ProgressIndex = ProgressReporter.GetProgressIndex(ProgressName.REFERENCE_DATA),
+                    ProgressReporter = ProgressReporter,
+                    ProxyOwnsReporter = false
+                });
         }
 
         protected Deck CurrentDeck => CardRenderer.CurrentDeck;
@@ -86,20 +96,28 @@ namespace CardMaker.Card.Export
         /// <summary>
         /// Rotates the export buffer based on the Layout exportRotation setting
         /// </summary>
-        /// <param name="zBuffer"></param>
-        /// <param name="zLayout"></param>
-        /// <param name="postTransition"></param>
-        protected void ProcessRotateExport(Bitmap zBuffer, ProjectLayout zLayout, bool postTransition)
+        /// <param name="zBuffer">The buffer to rotate</param>
+        /// <param name="zLayout">The layout containing the rotation settings</param>
+        /// <param name="reverseRotation">Flags to perform the reverse rotation transform</param>
+        protected void ProcessRotateExport(Bitmap zBuffer, ProjectLayout zLayout, bool reverseRotation)
         {
             switch (zLayout.exportRotation)
             {
                 case 90:
-                    zBuffer.RotateFlip(postTransition ? RotateFlipType.Rotate270FlipNone : RotateFlipType.Rotate90FlipNone);
+                    zBuffer.RotateFlip(reverseRotation ? RotateFlipType.Rotate270FlipNone : RotateFlipType.Rotate90FlipNone);
                     break;
                 case -90:
-                    zBuffer.RotateFlip(postTransition ? RotateFlipType.Rotate90FlipNone : RotateFlipType.Rotate270FlipNone);
+                    zBuffer.RotateFlip(reverseRotation ? RotateFlipType.Rotate90FlipNone : RotateFlipType.Rotate270FlipNone);
+                    break;
+                case 180:
+                    zBuffer.RotateFlip(RotateFlipType.Rotate180FlipNone);
                     break;
             }
         }
+
+        /// <summary>
+        /// The primary entry point for the export processing
+        /// </summary>
+        public abstract void ExportThread();
     }
 }

@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,11 +26,14 @@ using CardMaker.Card;
 using CardMaker.XML;
 using System.Collections.Generic;
 using CardMaker.Card.Translation;
+using Support.Progress;
 
 namespace UnitTest.DeckObject
 {
     internal class TestDeck : Deck
     {
+        protected ProgressReporterProxy m_zReporterProxy;
+
         public TestDeck()
         {
             CardLayout = new ProjectLayout()
@@ -57,18 +60,23 @@ namespace UnitTest.DeckObject
             List<List<string>> listDefineLines,
             string sReferencePath)
         {
-            ProcessLines(listLines, listDefineLines, false, "unittestref");
+            new DeckReader(this, m_zReporterProxy).ProcessLines(listLines, listDefineLines, false, "unittestref");
         }
 
         public string GetDefine(string key)
         {
             string value;
-            return m_zTranslator.DictionaryDefines.TryGetValue(key, out value) ? value : null;
+            return Translator.DictionaryDefines.TryGetValue(key, out value) ? value : null;
         }
 
         public void SetDisallowedCharReplacement(char c, string replacement)
         {
             FilenameTranslator.CharReplacement[c] = replacement;
+        }
+
+        public void SetProgressReporterProxy(ProgressReporterProxy zProgressReporterProxy)
+        {
+            m_zReporterProxy = zProgressReporterProxy;
         }
     }
 }

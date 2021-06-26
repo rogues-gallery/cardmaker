@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,6 +22,7 @@
 // SOFTWARE.
 ////////////////////////////////////////////////////////////////////////////////
 
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -66,7 +67,6 @@ namespace CardMaker.Card
                 new BorderElementRenderProcessor()
             };
 
-#warning this results in re-use of the same deck over and over... quite confusing. (see EmptyReference among other fields)
         public Deck CurrentDeck { get; set; }
         public float ZoomLevel { get; set; }
 
@@ -150,7 +150,7 @@ namespace CardMaker.Card
                     // draw all selections and element borders after everything else
                     for (var nIdx = CurrentDeck.CardLayout.Element.Length - 1; nIdx > -1; nIdx--)
                     {
-                        ProjectLayoutElement zElement = CurrentDeck.CardLayout.Element[nIdx];
+                        var zElement = ProjectManager.Instance.LookupElementReference(CurrentDeck.CardLayout.Element[nIdx]);
                         if (zElement.enabled) // only add enabled items to draw
                         {
                             DrawElementDebugBorder(zGraphics, zElement, nX, nY, ElementManager.Instance.GetSelectedElement() == zElement);
@@ -160,7 +160,7 @@ namespace CardMaker.Card
             }
 
             DrawLayoutDividers(zGraphics, bExport);
-            DrawBorder(zGraphics, nX, nY, CurrentDeck.CardLayout.width, CurrentDeck.CardLayout.height, CurrentDeck.CardLayout.drawBorder, bExport);
+            DrawBorder(zGraphics, nX, nY, CurrentDeck.CardLayout.width, CurrentDeck.CardLayout.height, CurrentDeck.CardLayout, bExport);
 
             zGraphics.Transform = matrixOriginal;
         }
@@ -175,15 +175,64 @@ namespace CardMaker.Card
         /// <param name="nHeight">height</param>
         /// <param name="bLayoutDrawBorder">Flag indicating if the layout has the draw border flag set</param>
         /// <param name="bExport">Flag indicating if this is an export</param>
-        public static void DrawBorder(Graphics zGraphics, int nX, int nY, int nWidth, int nHeight, bool bLayoutDrawBorder, bool bExport)
+        public static void DrawBorder(Graphics zGraphics, int nX, int nY, int nWidth, int nHeight, ProjectLayout zLayout, bool bExport)
         {
             // draw the card border
-            if ((bExport && CardMakerSettings.PrintLayoutBorder)
-                || (!bExport && bLayoutDrawBorder))
+            if (bExport
+                && zLayout.exportLayoutBorder
+                && zLayout.drawBorder)
             {
-                // note that the border is inclusive in the width/height consuming 2 pixels (0 to total-1)
-                zGraphics.DrawRectangle(Pens.Black, nX, nY, nWidth - 1, nHeight - 1);
+                if (zLayout.exportLayoutBorderCrossSize == 0)
+                {
+                    DrawSolidBorder(zGraphics, nX, nY, nWidth, nHeight);
+                }
+                else
+                {
+                    DrawBorderEdges(zGraphics, nX, nY, nWidth, nHeight, zLayout.exportLayoutBorderCrossSize);
+                }
             }
+            else if(!bExport && zLayout.drawBorder)
+            {
+                DrawSolidBorder(zGraphics, nX, nY, nWidth, nHeight);
+            }
+        }
+
+        private static void DrawSolidBorder(Graphics zGraphics, int nX, int nY, int nWidth, int nHeight)
+        {
+            var nLastHorizontalPixel = nWidth - 1;
+            var nLastVerticalPixel = nHeight - 1;
+            zGraphics.DrawRectangle(Pens.Black, nX, nY, nLastHorizontalPixel, nLastVerticalPixel);
+        }
+
+        private static void DrawBorderEdges(Graphics zGraphics, int nX, int nY, int nWidth, int nHeight, int nBorderCrossSize)
+        {
+            var nLastHorizontalPixel = nWidth - 1;
+            var nLastVerticalPixel = nHeight - 1;
+            var nDesiredLineEdgeSize = nBorderCrossSize;
+
+            // UL
+            zGraphics.DrawLine(Pens.Black, nX, nY, Math.Min(nDesiredLineEdgeSize, nLastHorizontalPixel), nY);
+            zGraphics.DrawLine(Pens.Black, nX, nY, nX, Math.Min(nDesiredLineEdgeSize, nLastVerticalPixel));
+
+            // LL
+            zGraphics.DrawLine(Pens.Black, nX, nY + nLastVerticalPixel,
+                Math.Min(nDesiredLineEdgeSize, nLastHorizontalPixel), nY + nLastVerticalPixel);
+            zGraphics.DrawLine(Pens.Black, nX, nY + nLastVerticalPixel, nX,
+                nY + nLastVerticalPixel - Math.Min(nDesiredLineEdgeSize, nLastVerticalPixel));
+
+            // UR
+            zGraphics.DrawLine(Pens.Black, nX + nLastHorizontalPixel, nY,
+                nX + nLastHorizontalPixel - Math.Min(nDesiredLineEdgeSize, nLastVerticalPixel), nY);
+            zGraphics.DrawLine(Pens.Black, nX + nLastHorizontalPixel, nY, nX + nLastHorizontalPixel,
+                nY + Math.Min(nDesiredLineEdgeSize, nLastVerticalPixel));
+
+            // LR
+            zGraphics.DrawLine(Pens.Black, nX + nLastHorizontalPixel, nY + nLastVerticalPixel,
+                nX + nLastHorizontalPixel,
+                nY + nLastVerticalPixel - Math.Min(nDesiredLineEdgeSize, nLastVerticalPixel));
+            zGraphics.DrawLine(Pens.Black, nX + nLastHorizontalPixel, nY + nLastVerticalPixel,
+                nX + nLastHorizontalPixel - Math.Min(nDesiredLineEdgeSize, nLastHorizontalPixel),
+                nY + nLastVerticalPixel);
         }
 
         /// <summary>
@@ -199,7 +248,10 @@ namespace CardMaker.Card
         private void DrawElement(Graphics zGraphics, Deck zDeck, ProjectLayoutElement zElement,
             int nX, int nY, string sInput, bool bExport)
         {
-            s_listElementRenderProcessors.ForEach(zRenderProcessor => sInput = zRenderProcessor.Render(zGraphics, zElement, zDeck, sInput, nX, nY, bExport));
+            foreach (var zRenderProcessor in s_listElementRenderProcessors)
+            {
+                sInput = zRenderProcessor.Render(zGraphics, zElement, zDeck, sInput, nX, nY, bExport);
+            }
 
             // always reset the transform
             zGraphics.ResetTransform();

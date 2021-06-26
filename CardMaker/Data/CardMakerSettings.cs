@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -130,12 +130,6 @@ namespace CardMaker.Data
             set { s_zIniManager.SetValue(IniSettings.PrintAutoCenterLayout, value.ToString(CultureInfo.CurrentCulture)); }
         }
 
-        public static bool PrintLayoutBorder
-        {
-            get { return s_zIniManager.GetValue(IniSettings.PrintLayoutBorder, bool.TrueString).Equals(bool.TrueString); }
-            set { s_zIniManager.SetValue(IniSettings.PrintLayoutBorder, value.ToString(CultureInfo.CurrentCulture)); }
-        }
-
         public static bool PrintLayoutsOnNewPage
         {
             get { return s_zIniManager.GetValue(IniSettings.PrintLayoutsOnNewPage, bool.FalseString).Equals(bool.TrueString); }
@@ -188,6 +182,26 @@ namespace CardMaker.Data
         {
             get { return s_zIniManager.GetValue(IniSettings.LogInceptTranslation, bool.FalseString).Equals(bool.TrueString); }
             set { s_zIniManager.SetValue(IniSettings.LogInceptTranslation, value.ToString()); }
+        }
+
+        public static bool AutoSaveEnabled
+        {
+            get { return s_zIniManager.GetValue(IniSettings.AutoSaveEnabled, bool.FalseString).Equals(bool.TrueString); }
+            set { s_zIniManager.SetValue(IniSettings.AutoSaveEnabled, value.ToString()); }
+        }
+
+        public static int AutoSaveIntervalMinutes
+        {
+            get
+            {
+                int nValue;
+                if (int.TryParse(s_zIniManager.GetValue(IniSettings.AutoSaveIntervalMinutes, "1"), out nValue))
+                {
+                    return nValue;
+                }
+                return 0;
+            }
+            set { s_zIniManager.SetValue(IniSettings.AutoSaveIntervalMinutes, value.ToString()); }
         }
     }
 }

@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +46,12 @@ namespace CardMaker.XML
 
         [XmlAttribute]
         public string type { get; set; }
+
+        [XmlAttribute]
+        public string layoutreference { get; set; }
+        
+        [XmlAttribute]
+        public string elementreference { get; set; }
 
         [XmlAttribute]
         public int x { get; set; }
@@ -138,6 +144,7 @@ namespace CardMaker.XML
 
         public ProjectLayoutElement(string sName)
         {
+            
             // actual values
             verticalalign = (int)StringAlignment.Near;
             horizontalalign = (int)StringAlignment.Near;
@@ -147,12 +154,12 @@ namespace CardMaker.XML
             height = 40;
             borderthickness = 0;
             outlinethickness = 0;
-            outlinecolor = "0x000000000";
+            outlinecolor = GetElementColorString(m_colorOutline);
             rotation = 0;
-            bordercolor = "0x000000000";
+            bordercolor = GetElementColorString(m_colorBorder);
             font = string.Empty;
-            elementcolor = "0x000000000";
-            backgroundcolor = "0x00000000";
+            elementcolor = GetElementColorString(m_colorElement);
+            backgroundcolor = GetElementColorString(m_colorBackground);
             type = ElementType.Text.ToString();
             lineheight = 0;
             wordspace = 0;
@@ -162,6 +169,8 @@ namespace CardMaker.XML
             keeporiginalsize = false;
             variable = string.Empty;
             name = sName;
+            layoutreference = null;
+            elementreference = null;
             opacity = 255;
             enabled = true;
             justifiedtext = false;
@@ -250,6 +259,8 @@ namespace CardMaker.XML
             wordspace = zElement.wordspace;
             tilesize = zElement.tilesize;
             justifiedtext = zElement.justifiedtext;
+            layoutreference = zElement.layoutreference;
+            elementreference = zElement.elementreference;
 
             if (bInitializeTranslatedFields)
             {
@@ -264,8 +275,14 @@ namespace CardMaker.XML
         /// <returns>The color, or Color.Black by default</returns>
         public static Color TranslateColorString(string sColor, int defaultAlpha = 255)
         {
+            var bSucceeded = false;
+            return TranslateColorString(sColor, defaultAlpha, out bSucceeded);
+        }
+        public static Color TranslateColorString(string sColor, int defaultAlpha, out bool bSucceeded)
+        {
             if (string.IsNullOrEmpty(sColor))
             {
+                bSucceeded = false;
                 return Color.Black;
             }
 
@@ -274,20 +291,24 @@ namespace CardMaker.XML
             {
                 sColor = sColor.Remove(0, 2);
             }
-
-            Color colorByName = Color.FromName(sColor);
-            // no named color will be set this way
-            if (colorByName.A != 0)
+            else
             {
-                return colorByName;
+                Color colorByName = Color.FromName(sColor);
+                // no named color will be set this way
+                if (colorByName.A != 0)
+                {
+                    bSucceeded = true;
+                    return colorByName;
+                }
             }
 
+            var colorResult = Color.Black;
             try
             {
                 switch (sColor.Length)
                 {
                     case 6: //0xRGB (hex RGB)
-                        return Color.FromArgb(
+                        colorResult = Color.FromArgb(
                             defaultAlpha,
                             Math.Min(255,
                                 Int32.Parse(sColor.Substring(0, 2), System.Globalization.NumberStyles.HexNumber)),
@@ -295,8 +316,9 @@ namespace CardMaker.XML
                                 Int32.Parse(sColor.Substring(2, 2), System.Globalization.NumberStyles.HexNumber)),
                             Math.Min(255,
                                 Int32.Parse(sColor.Substring(4, 2), System.Globalization.NumberStyles.HexNumber)));
+                        break;
                     case 8: //0xRGBA (hex RGBA)
-                        return Color.FromArgb(
+                        colorResult = Color.FromArgb(
                             Math.Min(255,
                                 Int32.Parse(sColor.Substring(6, 2), System.Globalization.NumberStyles.HexNumber)),
                             Math.Min(255,
@@ -305,25 +327,35 @@ namespace CardMaker.XML
                                 Int32.Parse(sColor.Substring(2, 2), System.Globalization.NumberStyles.HexNumber)),
                             Math.Min(255,
                                 Int32.Parse(sColor.Substring(4, 2), System.Globalization.NumberStyles.HexNumber)));
+                        break;
                     case 9: //RGB (int RGB)
-                        return Color.FromArgb(
+                        colorResult = Color.FromArgb(
                             defaultAlpha,
                             Math.Min(255, Int32.Parse(sColor.Substring(0, 3))),
                             Math.Min(255, Int32.Parse(sColor.Substring(3, 3))),
                             Math.Min(255, Int32.Parse(sColor.Substring(6, 3))));
+                        break;
                     case 12: //RGBA (int RGBA)
-                        return Color.FromArgb(
+                        colorResult = Color.FromArgb(
                             Math.Min(255, Int32.Parse(sColor.Substring(9, 3))),
                             Math.Min(255, Int32.Parse(sColor.Substring(0, 3))),
                             Math.Min(255, Int32.Parse(sColor.Substring(3, 3))),
                             Math.Min(255, Int32.Parse(sColor.Substring(6, 3))));
+                        break;
+                    default:
+                        bSucceeded = false;
+                        return colorResult;
                 }
+                bSucceeded = true;
+                return colorResult;
+
             }
             catch (Exception)
             {
                 Logger.AddLogLine("Unsupported color string found: " + sColor);
+                bSucceeded = false;
             }
-            return Color.Black;
+            return colorResult;
         }
 
         /// <summary>

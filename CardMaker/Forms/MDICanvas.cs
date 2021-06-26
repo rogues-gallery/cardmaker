@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -162,13 +162,16 @@ namespace CardMaker.Forms
                 int nHChange = 0;
                 int nVChange = 0;
                 // NOTE: this method only detects keydown events
+                bool ignoreDisabledElements = false;
                 switch (keyData)
                 {
                     case Keys.Control | Keys.Add:
+                        ignoreDisabledElements = true;
                         numericUpDownZoom.Value = Math.Min(numericUpDownZoom.Maximum,
                             numericUpDownZoom.Value + numericUpDownZoom.Increment);
                         break;
                     case Keys.Control | Keys.Subtract:
+                        ignoreDisabledElements = true;
                         numericUpDownZoom.Value = Math.Max(numericUpDownZoom.Minimum,
                             numericUpDownZoom.Value - numericUpDownZoom.Increment);
                         break;
@@ -216,23 +219,29 @@ namespace CardMaker.Forms
                         m_zCardCanvas.Focus();
                         break;
                     case Keys.M:
+                        ignoreDisabledElements = true;
                         ChangeMouseMode(MouseMode.Move == m_eMouseMode
                             ? MouseMode.MoveResize
                             : MouseMode.Move);
                         break;
                     case Keys.R:
+                        ignoreDisabledElements = true;
                         ChangeMouseMode(MouseMode.Rotate == m_eMouseMode
                             ? MouseMode.MoveResize
                             : MouseMode.Rotate);
                         break;
                 }
-                if (CheckAllSelectedElementsEnabled(false))
+
+                if (!ignoreDisabledElements)
                 {
-                    ElementManager.Instance.ProcessSelectedElementsChange(nHChange, nVChange, 0, 0);
-                }
-                else
-                {
-                    Logger.AddLogLine("You cannot adjust disabled elements!");
+                    if (CheckAllSelectedElementsEnabled(false))
+                    {
+                        ElementManager.Instance.ProcessSelectedElementsChange(nHChange, nVChange, 0, 0);
+                    }
+                    else
+                    {
+                        Logger.AddLogLine("You cannot adjust disabled elements!");
+                    }
                 }
             }
             return base.ProcessCmdKey(ref msg, keyData);
@@ -301,18 +310,19 @@ namespace CardMaker.Forms
         private void contextmenuOpening_Handler(object sender, CancelEventArgs e)
         {
             m_zContextMenu.Items.Clear();
-            if (null != LayoutManager.Instance.ActiveDeck.CardLayout.Element)
+            if (null != LayoutManager.Instance.ActiveDeck && null != LayoutManager.Instance.ActiveDeck.CardLayout.Element)
             {
                 Point pointMouse = m_zCardCanvas.PointToClient(MousePosition);
                 // add only the items that the mouse is within the rectangle of
-                foreach (ProjectLayoutElement zElement in LayoutManager.Instance.ActiveDeck.CardLayout.Element)
+                for(var nIdx = 0; nIdx < LayoutManager.Instance.ActiveDeck.CardLayout.Element.Length; nIdx++)
                 {
+                    var zElement = ProjectManager.Instance.LookupElementReference(LayoutManager.Instance.ActiveDeck.CardLayout.Element[nIdx]);
+
                     if (!zElement.enabled)
                     {
                         continue;
                     }
-                    var zRect = new RectangleF(zElement.x*m_fZoom, zElement.y*m_fZoom, zElement.width*m_fZoom,
-                        zElement.height*m_fZoom);
+                    var zRect = new RectangleF(zElement.x*m_fZoom, zElement.y*m_fZoom, zElement.width*m_fZoom, zElement.height*m_fZoom);
                     if (zRect.Contains(pointMouse))
                     {
                         var zItem = m_zContextMenu.Items.Add(zElement.name, null, contextmenuClick_Handler);
@@ -1101,7 +1111,11 @@ namespace CardMaker.Forms
                 return;
             }
             m_eMouseMode = eDestinationMode;
+            UpdateFormText();
+        }
 
+        public void UpdateFormText()
+        {
             switch (m_eMouseMode)
             {
                 case MouseMode.Move:
@@ -1117,6 +1131,11 @@ namespace CardMaker.Forms
                     Cursor = new Cursor(Properties.Resources.RotateCursor.Handle);
                     break;
             }
+
+            Text += " [AutoSave: {0}]".FormatString(
+                AutoSaveManager.Instance.IsEnabled()
+                    ? "Enabled"
+                    : "Disabled");
         }
 
         private bool CheckAllSelectedElementsEnabled(bool bShowWarning)

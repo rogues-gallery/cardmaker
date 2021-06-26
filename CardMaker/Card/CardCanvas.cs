@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -84,6 +84,7 @@ namespace CardMaker.Card
             
             if (-1 != ActiveDeck.CardIndex && ActiveDeck.CardIndex < ActiveDeck.CardCount)
             {
+                e.Graphics.FillRectangle(Brushes.White, 0, 0, Size.Width, Size.Height);
                 m_zCardRenderer.DrawCard(0, 0, e.Graphics, ActiveDeck.CurrentLine, false, true);
             }
         }

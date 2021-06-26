@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,8 @@ using CardMaker.Events.Managers;
 using CardMaker.Forms.Dialogs;
 using CardMaker.Properties;
 using CardMaker.XML;
-using Support.Google;
+using ClosedXML.Excel;
+using Support.Google.Sheets;
 using Support.IO;
 using Support.UI;
 using LayoutEventArgs = CardMaker.Events.Args.LayoutEventArgs;
@@ -172,7 +173,9 @@ namespace CardMaker.Forms
             if (typeof(ProjectLayout) == treeView.SelectedNode.Tag.GetType() && null != e.Label)
             {
                 var zLayout = (ProjectLayout)treeView.SelectedNode.Tag;
+                var sOldName = zLayout.Name;
                 zLayout.Name = e.Label;
+                ProjectManager.Instance.FireLayoutRenamed(zLayout, sOldName);
                 ProjectManager.Instance.FireProjectUpdated(true);
             }
         }
@@ -321,11 +324,8 @@ namespace CardMaker.Forms
             LayoutManager.ShowAdjustLayoutSettingsDialog(true, (ProjectLayout)treeView.SelectedNode.Tag, this);
         }
 
-        private void addReferenceToolStripMenuItem_Click(object sender, EventArgs e)
+        private void tryToAddReferenceNode(string sFile)
         {
-            var sFile = FormUtils.FileOpenHandler("CSV files (*.csv)|*.csv|All files (*.*)|*.*", null, true);
-            if (null != sFile)
-            {
                 var zLayout = (ProjectLayout)treeView.SelectedNode.Tag;
                 var bNewDefault = 0 == treeView.SelectedNode.Nodes.Count;
                 var tnReference = AddReferenceNode(treeView.SelectedNode, sFile, bNewDefault, zLayout);
@@ -338,9 +338,41 @@ namespace CardMaker.Forms
                 {
                     tnReference.Parent.Expand();
                     LayoutManager.Instance.RefreshActiveLayout();
-
+                    LayoutManager.Instance.FireLayoutUpdatedEvent(true);
                 }
                 ProjectManager.Instance.FireProjectUpdated(true);
+        }
+
+        private void addReferenceToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var sFile = FormUtils.FileOpenHandler("CSV files (*.csv)|*.csv|All files (*.*)|*.*", null, true);
+            if (null != sFile)
+            {
+                tryToAddReferenceNode(sFile);
+            }
+        }
+
+        private void addExcelReferenceToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            var sFile = FormUtils.FileOpenHandler("Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*", null, true);
+            if (null != sFile)
+            {
+                // Open File
+                var workbook = new XLWorkbook(sFile);
+
+                // Grab all the sheet names
+                List<string> sheets = new List<string>();
+                foreach(IXLWorksheet sheet in workbook.Worksheets)
+                {
+                    sheets.Add(sheet.Name);
+                }
+
+                // Let the user select a sheet from the spreadsheet they selected
+                ExcelSheetSelectionDialog dialog = new ExcelSheetSelectionDialog(sheets);
+                if(dialog.ShowDialog() == DialogResult.OK)
+                {
+                    tryToAddReferenceNode(ExcelSpreadsheetReference.generateFullReference(sFile, dialog.GetSelectedSheet()));
+                }
             }
         }
 
@@ -351,31 +383,14 @@ namespace CardMaker.Forms
                 return;
             }
 
-            var zDialog = new GoogleSpreadsheetBrowser(GoogleReferenceReader.APP_NAME, GoogleReferenceReader.CLIENT_ID,
-                CardMakerInstance.GoogleAccessToken, true);
+            var zDialog = new GoogleSpreadsheetBrowser(new GoogleSpreadsheet(CardMakerInstance.GoogleInitializerFactory), true);
             if (DialogResult.OK == zDialog.ShowDialog(this))
             {
-                var bNewDefault = 0 == treeView.SelectedNode.Nodes.Count;
-                var zLayout = (ProjectLayout)treeView.SelectedNode.Tag;
-                var tnReference = AddReferenceNode(
-                    treeView.SelectedNode,
-                    CardMakerConstants.GOOGLE_REFERENCE + CardMakerConstants.GOOGLE_REFERENCE_SPLIT_CHAR +
-                    zDialog.SelectedSpreadsheet.Title.Text + CardMakerConstants.GOOGLE_REFERENCE_SPLIT_CHAR +
-                    zDialog.SelectedSheet.Title.Text,
-                    bNewDefault,
-                    zLayout);
-                if (null == tnReference)
+                var zGoogleSpreadsheetReference = new GoogleSpreadsheetReference(zDialog.SelectedSpreadsheet)
                 {
-                    MessageBox.Show(this, "The specified reference is already associated with this layout.", "Reference Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-                if (bNewDefault)
-                {
-                    tnReference.Parent.Expand();
-                    LayoutManager.Instance.RefreshActiveLayout();
-                    LayoutManager.Instance.FireLayoutUpdatedEvent(true);
-                }
-                ProjectManager.Instance.FireProjectUpdated(true);            
+                    SheetName = zDialog.SelectedSheet
+                };
+                tryToAddReferenceNode(zGoogleSpreadsheetReference.generateFullReference());
             }
         }
 
@@ -442,9 +457,11 @@ namespace CardMaker.Forms
             const string EXPORT_CROP = "EXPORT_CROP";
             const string EXPORT_TRANSPARENT = "EXPORT_TRANSPARENT";
             const string EXPORT_PDF_AS_PAGE_BACK = "EXPORT_PDF_AS_PAGE_BACK";
+            const string EXPORT_BORDER = "EXPORT_BORDER";
+            const string EXPORT_BORDER_CROSS_SIZE = "EXPORT_BORDER_CROSS_SIZE";
 
             Type typeObj = treeView.SelectedNode.Tag.GetType();
-            string sExistingFormat = string.Empty;
+            var sExistingFormat = string.Empty;
             var zQuery = new QueryPanelDialog("Configure Layout Export", 550, 300, false);
             zQuery.SetIcon(Resources.CardMakerIcon);
 
@@ -476,7 +493,7 @@ namespace CardMaker.Forms
 
                 if (zProjectLayout.exportHeight > 0)
                 {
-                    var nHeight = zProjectLayout.width + zProjectLayout.buffer;
+                    var nHeight = zProjectLayout.height + zProjectLayout.buffer;
                     nRows = zProjectLayout.exportHeight / nHeight;
                 }
 
@@ -494,6 +511,9 @@ namespace CardMaker.Forms
                 zQuery.AddCheckBox("Export Transparent Background", zProjectLayout.exportTransparentBackground,
                     EXPORT_TRANSPARENT);
 
+                zQuery.AddCheckBox("Print/Export Layout Border", zProjectLayout.exportLayoutBorder, EXPORT_BORDER);
+                zQuery.AddNumericBox("Print/Export Layout Border Cross Size", zProjectLayout.exportLayoutBorderCrossSize, 0, int.MaxValue, 1, 0, EXPORT_BORDER_CROSS_SIZE);
+
                 numericColumns.ValueChanged += (o, args) =>
                 {
                     numericExportWidth.Value = (zProjectLayout.width * numericColumns.Value) + 
@@ -505,6 +525,7 @@ namespace CardMaker.Forms
                     numericExportHeight.Value = (zProjectLayout.height * numericRows.Value) +
                         Math.Max(0, (numericRows.Value - 1) * zProjectLayout.buffer);
                 };
+
             }
 
             zQuery.AddTextBox("Name Format", sExistingFormat ?? string.Empty, false, NAME);
@@ -525,6 +546,8 @@ namespace CardMaker.Forms
                     zProjectLayout.exportCropDefinition = zQuery.GetString(EXPORT_CROP);
                     zProjectLayout.exportTransparentBackground = zQuery.GetBool(EXPORT_TRANSPARENT);
                     zProjectLayout.exportPDFAsPageBack = zQuery.GetBool(EXPORT_PDF_AS_PAGE_BACK);
+                    zProjectLayout.exportLayoutBorder = zQuery.GetBool(EXPORT_BORDER);
+                    zProjectLayout.exportLayoutBorderCrossSize = (int)zQuery.GetDecimal(EXPORT_BORDER_CROSS_SIZE);
                 }
                 ProjectManager.Instance.FireProjectUpdated(true);
             }
@@ -590,7 +613,7 @@ namespace CardMaker.Forms
             });
         }
 
-        #endregion
+#endregion
 
         /// <summary>
         /// Updates the selected layout node color (if applicable)

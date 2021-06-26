@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,10 +22,24 @@
 // SOFTWARE.
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace CardMaker.Card.Export
+using System;
+using Support.IO;
+
+namespace CardMaker.Card.CommandLine
 {
-    public interface ICardExporter
+    public class ConsoleLogger : ILogger
     {
-        void ExportThread();
+        public void AddLogLines(string[] arrayLines)
+        {
+            foreach (var sLine in arrayLines)
+            {
+                Console.WriteLine(sLine);
+            }
+        }
+
+        public void ClearLog()
+        {
+            // no opp
+        }
     }
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -77,7 +77,8 @@ namespace CardMaker.Data
         PrintPageVerticalMargin,
         PrintPageHorizontalMargin,
         PrintAutoCenterLayout,
-        PrintLayoutBorder,
+        AutoSaveEnabled,
+        AutoSaveIntervalMinutes,
         LastImageExportFormat,
         PrintLayoutsOnNewPage,
         EnableGoogleCache,
@@ -105,6 +106,7 @@ namespace CardMaker.Data
     public enum ReferenceType
     {
         CSV = 0,
-        Google = 1
+        Google = 1,
+        Excel = 2
     }
 }

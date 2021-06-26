@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,8 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
-using CardMaker.Card;
+using Support.Google;
+using Support.Progress;
 
 namespace CardMaker.Data
 {
@@ -88,7 +89,21 @@ namespace CardMaker.Data
         /// <summary>
         /// The current Google access token
         /// </summary>
-        public static string GoogleAccessToken { get; set; }
+        public static string GoogleAccessToken
+        {
+            get => GoogleInitializerFactory.AccessToken;
+            set => GoogleInitializerFactory.AccessToken = value;
+        }
+
+        /// <summary>
+        /// The GoogleInitializerFactory
+        /// </summary>
+        public static GoogleInitializerFactory GoogleInitializerFactory { get; set; }
+
+        /// <summary>
+        /// General ProgressReporterFactory
+        /// </summary>
+        public static ProgressReporterFactory ProgressReporterFactory { get; set; }
 
         /// <summary>
         /// The project file indicated on the command line (first argument)
@@ -138,7 +153,9 @@ namespace CardMaker.Data
             DrawSelectedElementGuides = true;
             DrawSelectedElementRotationBounds = true;
             GoogleCredentialsInvalid = false;
+            GoogleInitializerFactory = new GoogleInitializerFactory(CardMakerConstants.APPLICATION_NAME, CardMakerConstants.GOOGLE_CLIENT_ID, CardMakerConstants.GOOGLE_SCOPES);
             GoogleAccessToken = null;
+            ProgressReporterFactory = new WaitDialogProgressReporterFactory();
             ProcessingUserAction = false;
             Random = new Random();
         }

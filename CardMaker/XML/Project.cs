@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 using System.Xml.Serialization;
+using CardMaker.Card.Import;
 using CardMaker.Data;
 
 namespace CardMaker.XML
@@ -64,7 +65,7 @@ namespace CardMaker.XML
                     continue;
                 foreach (var zReference in zLayout.Reference)
                 {
-                    if (zReference.RelativePath.StartsWith(CardMakerConstants.GOOGLE_REFERENCE))
+                    if (zReference.RelativePath.StartsWith(GoogleSpreadsheetReference.GOOGLE_REFERENCE))
                     {
                         return true;
                     }

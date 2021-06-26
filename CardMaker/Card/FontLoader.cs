@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -33,8 +33,14 @@ namespace CardMaker.Card
     {
         public static readonly Font DefaultFont = new Font("Arial", 12);
 
-#warning There was some bizarre comment about font family name somehow differing when looking up families... thus the ugly duplicated looking code. (TODO: investigate)
-
+        /// <summary>
+        /// Gets the font based on the input font family. This attempts to verify the font style is valid.
+        /// </summary>
+        /// <param name="zFontFamily">The font family to attempt to load</param>
+        /// <param name="fSize">The size to apply</param>
+        /// <param name="eFontStyle">The style to apply</param>
+        /// <returns>The font with the style applied. Will default the font style to a valid one if an invalid one is passed in. Ultimately will default
+        /// to the application default if all fails.</returns>
         public static Font GetFont(FontFamily zFontFamily, float fSize, FontStyle eFontStyle)
         {
             if (zFontFamily.IsStyleAvailable(eFontStyle))
@@ -74,9 +80,17 @@ namespace CardMaker.Card
             return DefaultFont;
         }
 
+        /// <summary>
+        /// Gets the font based on the input font name
+        /// </summary>
+        /// <param name="sFontName">The font to attempt to load</param>
+        /// <param name="fSize">The size to apply</param>
+        /// <param name="eFontStyle">The style to apply</param>
+        /// <returns>The font with the style applied. Will default the font style to a valid one if an invalid one is passed in. Ultimately will default
+        /// to the application default if all fails.</returns>
         public static Font GetFont(string sFontName, float fSize, FontStyle eFontStyle)
         {
-            // sFontName IS NOT a family name, this is different somehow
+            // sFontName IS NOT a family name
             try
             {
                 return new Font(sFontName, fSize, eFontStyle);

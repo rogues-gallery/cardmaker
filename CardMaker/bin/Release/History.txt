@@ -1,5 +1,25 @@
 Card Maker Version History
 --------------------------
+1.2.0.0
+- Added ability to preview color changes in the color selection dialog. This works with 1+ elements selected.
+
+1.1.0.0
+- Changed card export for layouts marked as back to be right-aligned
+- Added ability to export a layout at 180 degrees
+- Added ability to create reference elements (an element owned by a layout but accessible in others)
+- When adding a Google reference the prompt will not disrupt the add reference process.
+- Reference loading is now multi-threaded so you don't have to wait as long!
+- Additional override for background shapes allowing for custom opacity
+- Added ability to select alpha in the color selection dialog.
+- Border render on exports is now controlled per layout instead of at the application level.
+- Updated Color dialog to allow typing/pasting of hex values.
+- Added ability to export with only crosses in the corners with layouts
+- Changed border functionality on export to apply if both border is enabled on the layout and border export is enabled in the general settings
+- Added support for the non-deprecated Google Sheets API
+- Added support for AutoSave (Disabled by default, can toggle with Ctrl+T)
+- Support for loading excel files! (TheMikaus)
+- Added basic implementation of FormattedText auto-scale (only applies to main font size)
+
 1.0.1.0
 - Added Crop Export Definition (for PDF to start with) allowing for cropped outputs.
 - Added an optional x/y display to the Canvas form.

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@ using CardMaker.Data;
 using CardMaker.Events.Args;
 using CardMaker.Events.Managers;
 using CardMaker.XML;
+using Support.IO;
 using Support.UI;
 using LayoutEventArgs = CardMaker.Events.Args.LayoutEventArgs;
 
@@ -41,8 +42,16 @@ namespace CardMaker.Forms
 {
     public partial class MDILayoutControl : Form
     {
+        private enum ElementFieldIndex : int
+        {
+            Enabled = 0,
+            ElementName,
+            Type
+        }
+
         private bool m_bFireLayoutChangeEvents = true;
         private readonly List<ProjectLayoutElement> m_listClipboardElements = new List<ProjectLayoutElement>();
+        private string m_sClipboardLayoutName;
         private readonly Dictionary<string, ListViewItem> m_dictionaryItems = new Dictionary<string, ListViewItem>();
         private int[] m_arrayRowToIndex;
         private int[] m_arrayIndexToRow;
@@ -106,7 +115,7 @@ namespace CardMaker.Forms
 
         void Element_Selected(object sender, ElementEventArgs args)
         {
-            if (null != args.Elements && args.Elements.Count == 1)
+            if (null != args.Elements && args.Elements.Count == 1 && args.Elements[0] != null)
             {
                 ChangeSelectedElement(args.Elements[0].name);
             }
@@ -235,6 +244,7 @@ namespace CardMaker.Forms
                     listViewElements.Items.Remove(zLvi);
                 }
 #endif
+                ProjectManager.Instance.FireElementsRemoved(listToDelete.Select((x) => (ProjectLayoutElement)x.Tag).ToList());
                 SetupLayoutUndo(listToKeep);
 
                 LayoutManager.Instance.ActiveLayout.Element = listToKeep.ToArray();
@@ -251,6 +261,13 @@ namespace CardMaker.Forms
             }
             const string NAME = "NAME";
             var zElement = (ProjectLayoutElement)listViewElements.SelectedItems[0].Tag;
+
+            if (!string.IsNullOrEmpty(zElement.layoutreference))
+            {
+                MessageBox.Show(this, "You cannot rename a Reference Element.", "", MessageBoxButtons.OK, MessageBoxIcon.Hand);
+                return;
+            }
+
             var zQuery = new QueryPanelDialog("Rename", 350, false);
             zQuery.SetIcon(Properties.Resources.CardMakerIcon);
             zQuery.AddTextBox("Name: ", zElement.name, false, NAME);
@@ -394,6 +411,8 @@ namespace CardMaker.Forms
             if (0 < listViewElements.SelectedItems.Count)
             {
                 m_listClipboardElements.Clear();
+                // the layout is needed so references can be pasted
+                m_sClipboardLayoutName = LayoutManager.Instance.ActiveLayout.Name;
                 for (int nIdx = 0; nIdx < listViewElements.SelectedItems.Count; nIdx++)
                 {
                     m_listClipboardElements.Add((ProjectLayoutElement)listViewElements.SelectedItems[nIdx].Tag);
@@ -405,8 +424,96 @@ namespace CardMaker.Forms
         {
             if (0 < m_listClipboardElements.Count)
             {
+                Dictionary<string, ProjectLayoutElement> dictionaryExistingElements = null;
+                if (null != LayoutManager.Instance.ActiveLayout.Element)
+                {
+                    dictionaryExistingElements = LayoutManager.Instance.ActiveLayout.Element.ToDictionary(x => x.name);
+                }
+
+                if (dictionaryExistingElements != null)
+                {
+                    if (m_listClipboardElements.Exists(
+                        zElement => dictionaryExistingElements.ContainsKey(zElement.name)))
+                    {
+                        const string ELEMENT_NAMES = "ELEMENT_NAMES";
+                        var zQuery = new QueryPanelDialog("Duplicate Elements Rename", 400, false);
+                        zQuery.SetIcon(Properties.Resources.CardMakerIcon);
+                        zQuery.AddLabel("Each line has the name of an element to be pasted.", 24);
+                        zQuery.AddLabel("Duplicated element names are marked with *", 24);
+                        zQuery.AddMultiLineTextBox("Element Name(s)",
+                            string.Join(Environment.NewLine, m_listClipboardElements.Select(zElement =>
+                            {
+                                return zElement.name + (dictionaryExistingElements.ContainsKey(zElement.name) ? "*" : "");
+                            }).ToList()),
+                            200,
+                            ELEMENT_NAMES);
+
+                        if (DialogResult.OK == zQuery.ShowDialog(this))
+                        {
+                            var arrayNames = zQuery.GetString(ELEMENT_NAMES)
+                                .Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+                            if (arrayNames.Length != m_listClipboardElements.Count)
+                            {
+                                MessageBox.Show(zQuery.Form,
+                                    "The number of elements names does not match the clipboard. Cancelling paste.", "", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                                return;
+                            }
+
+                            for (var nIdx = 0; nIdx < m_listClipboardElements.Count; nIdx++)
+                            {
+                                AddElements(new string[] { arrayNames[nIdx] }, m_listClipboardElements[nIdx]);
+                            }
+                        }
+                        return;
+                    }
+                }
                 m_listClipboardElements.ForEach(x => AddElements(new string[] { x.name }, x));
             }
+        }
+
+        private void pasteReferenceToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (0 < m_listClipboardElements.Count)
+            {
+                Dictionary<string, ProjectLayoutElement> dictionaryExistingElements = null;
+                if (null != LayoutManager.Instance.ActiveLayout.Element)
+                {
+                    dictionaryExistingElements = LayoutManager.Instance.ActiveLayout.Element.ToDictionary(x => x.name);
+                }
+
+                if (dictionaryExistingElements != null)
+                {
+                    foreach (var zElement in m_listClipboardElements)
+                    {
+                        if (dictionaryExistingElements.ContainsKey(zElement.name))
+                        {
+                            MessageBox.Show(this,
+                                "References cannot have a different name. Please remove or rename the existing element.",
+                                "", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                            return;
+                        }
+                    }
+
+                }
+                m_listClipboardElements.ForEach(x => AddElements(new string[] { x.name }, x, m_sClipboardLayoutName));
+            }
+        }
+
+        private void detachReferenceToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            // copy all the fields over to the element and remove the reference fields
+            if (1 > listViewElements.SelectedItems.Count) return;
+            for(var nIdx = 0; nIdx < listViewElements.SelectedItems.Count; nIdx++)
+            {
+                var zItem = listViewElements.SelectedItems[nIdx];
+                var zElement = (ProjectLayoutElement)zItem.Tag;
+                // reference elements only!
+                if (zElement.layoutreference == null) continue;
+                var zReferenceElement = ProjectManager.Instance.LookupElementReference(zElement);
+                zElement.DeepCopy(zReferenceElement, true);
+                zItem.SubItems[(int)ElementFieldIndex.ElementName].Text = GenerateListViewItemElementText(zElement);
+            }
+            LayoutManager.Instance.FireLayoutUpdatedEvent(true);
         }
 
         private void pasteSettingsToolStripMenuItem_Click(object sender, EventArgs e)
@@ -480,6 +587,8 @@ namespace CardMaker.Forms
 
             copyToolStripMenuItem.Enabled = 0 != listViewElements.SelectedItems.Count;
             pasteToolStripMenuItem.Enabled = 0 < m_listClipboardElements.Count;
+            pasteReferenceToolStripMenuItem.Enabled = 0 < m_listClipboardElements.Count;
+            detachReferenceToolStripMenuItem.Enabled = 0 != listViewElements.SelectedItems.Count;
             pasteSettingsToolStripMenuItem.Enabled = 1 == m_listClipboardElements.Count;
         }
 
@@ -521,16 +630,24 @@ namespace CardMaker.Forms
         }
 
         #endregion
-
+        
         private ListViewItem CreateListViewItem(ProjectLayoutElement zElement)
         {
-            var zLvi = new ListViewItem(new string[] { zElement.enabled.ToString(), zElement.name, zElement.type })
+            var zLvi = new ListViewItem(new string[] { zElement.enabled.ToString(), GenerateListViewItemElementText(zElement), zElement.type })
             {
                 Tag = zElement
             };
+            zLvi.ToolTipText = zElement.layoutreference == null
+                ? null
+                : "{0}:{1} Reference".FormatString(zElement.layoutreference, zElement.elementreference);
             UpdateListViewItemText(zLvi, zElement);
             m_dictionaryItems.Add(zElement.name, zLvi);
             return zLvi;
+        }
+
+        private string GenerateListViewItemElementText(ProjectLayoutElement zElement)
+        {
+            return zElement.name + (null != zElement.layoutreference && null != zElement.elementreference ? "*" : "");
         }
 
         private void ClearSelection()
@@ -569,20 +686,22 @@ namespace CardMaker.Forms
             }
         }
 
-        private void AddElements(IEnumerable<string> collectionNames, ProjectLayoutElement zBaseElement)
+        /// <summary>
+        /// Adds the specified elements based on the base element (and optionally as a reference)
+        /// </summary>
+        /// <param name="collectionNames">The names of the elements to generate</param>
+        /// <param name="zBaseElement">The base element to copy from</param>
+        /// <param name="sLayoutReferenceName">The reference layout to apply</param>
+        private void AddElements(IEnumerable<string> collectionNames, ProjectLayoutElement zBaseElement, string sLayoutReferenceName = null)
         {
-            // construct a new list of elements
-            var listElements = new List<ProjectLayoutElement>();
-            if (null != LayoutManager.Instance.ActiveLayout.Element)
-            {
-                listElements.AddRange(LayoutManager.Instance.ActiveLayout.Element);
-            }
+            var listNewElements = new List<ProjectLayoutElement>();
 
             foreach (string sName in collectionNames)
             {
                 string sTrimmed = sName.Trim();
                 if (m_dictionaryItems.ContainsKey(sTrimmed)) // no duplicates!
                 {
+                    Logger.AddLogLine("Unable to add duplicated element: {0}".FormatString(sTrimmed));
                     continue;
                 }
                 var zCardElement = new ProjectLayoutElement(sTrimmed);
@@ -590,6 +709,8 @@ namespace CardMaker.Forms
                 if (null != zBaseElement)
                 {
                     zCardElement.DeepCopy(zBaseElement, true);
+                    zCardElement.layoutreference = sLayoutReferenceName;
+                    zCardElement.elementreference = sLayoutReferenceName == null ? null : zBaseElement.name;
                 }
                 else
                 {
@@ -597,10 +718,18 @@ namespace CardMaker.Forms
                     zCardElement.SetElementColor(Color.Black);
                     zCardElement.SetElementFont(FontLoader.DefaultFont);
                 }
-                listElements.Add(zCardElement);
+                listNewElements.Add(zCardElement);
                 ListViewItem zLvi = CreateListViewItem(zCardElement);
                 listViewElements.Items.Add(zLvi);
             }
+
+            // construct a new list of elements
+            var listElements = new List<ProjectLayoutElement>();
+            if (null != LayoutManager.Instance.ActiveLayout.Element)
+            {
+                listElements.AddRange(LayoutManager.Instance.ActiveLayout.Element);
+            }
+            listElements.AddRange(listNewElements);
 
             var zLayout = LayoutManager.Instance.ActiveLayout;
             if (null == zLayout.Element ||
@@ -612,6 +741,7 @@ namespace CardMaker.Forms
 
                 // assign the new list to the actual project layout
                 LayoutManager.Instance.ActiveLayout.Element = listElements.ToArray();
+                ProjectManager.Instance.FireElementsAdded(listNewElements);
                 LayoutManager.Instance.FireLayoutUpdatedEvent(true);
             }
         }
@@ -681,10 +811,11 @@ namespace CardMaker.Forms
 
         private void RenameElement(ProjectLayoutElement zElement, ListViewItem lvItem, string sOldName, string sNewName)
         {
-            m_dictionaryItems.Remove(sOldName);
             zElement.name = sNewName;
-            lvItem.SubItems[1].Text = zElement.name;
+            lvItem.SubItems[(int)ElementFieldIndex.ElementName].Text = GenerateListViewItemElementText(zElement);
+            ProjectManager.Instance.FireElementRenamed(zElement, sOldName);
             // update dictionary
+            m_dictionaryItems.Remove(sOldName);
             m_dictionaryItems.Add(zElement.name, listViewElements.SelectedItems[0]);
         }
 

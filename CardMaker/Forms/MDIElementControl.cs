@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -201,14 +201,8 @@ namespace CardMaker.Forms
             var zPanel = (Panel)btnClicked.Tag;
             zRGB.UpdateColorBox(zPanel.BackColor);
 
-            if (DialogResult.OK != zRGB.ShowDialog())
-            {
-                return;
-            }
-            var colorRedo = zRGB.Color;
-
-            var listActions = UserAction.CreateActionList();
-
+            // create the undo dictionary per element
+            var dictionaryElementUndoColors = new Dictionary<ProjectLayoutElement, Color>(listSelectedElements.Count);
             foreach (var zElement in listSelectedElements)
             {
                 var zElementToChange = zElement;
@@ -225,16 +219,55 @@ namespace CardMaker.Forms
                 {
                     colorUndo = zElement.GetElementColor();
                 }
+
                 if (btnClicked == btnElementBackgroundColor)
                 {
                     colorUndo = zElement.GetElementBackgroundColor();
                 }
+                dictionaryElementUndoColors.Add(zElementToChange, colorUndo);
+            }
+
+            zRGB.PreviewEvent += delegate(object o, Color color)
+            {
+                foreach (var zElement in listSelectedElements)
+                {
+                    SetColorValue(btnClicked, color, zElement);
+                }
+                LayoutManager.Instance.FireLayoutUpdatedEvent(false);
+            };
+
+            if (DialogResult.OK != zRGB.ShowDialog())
+            {
+                // restore the original colors on the elements
+                foreach (var zElement in listSelectedElements)
+                {
+                    if (dictionaryElementUndoColors.TryGetValue(zElement, out var colorOriginal))
+                    {
+                        SetColorValue(btnClicked, colorOriginal, zElement);
+                    }
+                }
+                LayoutManager.Instance.FireLayoutUpdatedEvent(false);
+                return;
+            }
+            var colorRedo = zRGB.Color;
+
+            var listActions = UserAction.CreateActionList();
+
+            foreach (var zElement in listSelectedElements)
+            {
+                var zElementToChange = zElement;
 
                 listActions.Add(bRedo =>
                     {
                         if (null != LayoutManager.Instance.ActiveDeck)
                         {
                             LayoutManager.Instance.ActiveDeck.ResetMarkupCache(zElementToChange.name);
+                        }
+
+                        var colorUndo = Color.White;
+                        if (dictionaryElementUndoColors.TryGetValue(zElementToChange, out var colorOriginal))
+                        {
+                            colorUndo = colorOriginal;
                         }
                         SetColorValue(btnClicked, bRedo ? colorRedo : colorUndo, zElementToChange);
                         UpdatePanelColors(zElementToChange);
@@ -538,9 +571,15 @@ namespace CardMaker.Forms
                 }
                 if (null != zBmp)
                 {
-#warning -- this is 2 events, not 1 (in the case of undo)
-                    numericElementW.Value = zBmp.Width;
-                    numericElementH.Value = zBmp.Height;
+                    var nWidth = zElement.width;
+                    var nHeight = zElement.height;
+                    Action<bool> actionResizeImage = bRedo =>
+                    {
+                        zElement.width = bRedo ? zBmp.Width : nWidth;
+                        zElement.height = bRedo ? zBmp.Height : nHeight;
+                        LayoutManager.Instance.FireLayoutUpdatedEvent(true);
+                    };
+                    UserAction.PushAction(actionResizeImage, true);
                 }
             }
         }
@@ -560,13 +599,13 @@ namespace CardMaker.Forms
                         m_zContextMenu.Items.Add("Add Reference to [" + columnText + "] column", null,
                             (osender, ea) =>
                             {
+                                // TODO: move this logic into the translator classes and get the current translator from the current deck object
                                 if (TranslatorType.Incept == ProjectManager.Instance.LoadedProjectTranslatorType)
                                 {
                                     InsertVariableText("@[" + columnText + "]");
                                 }
                                 else if(TranslatorType.JavaScript == ProjectManager.Instance.LoadedProjectTranslatorType)
                                 {
-#warning this is a bit of a hack, this kind of logic should be handled by the translator
                                     InsertVariableText(columnText.StartsWith("~") ? columnText.Substring(1) : columnText);
                                 }
                             });
@@ -769,7 +808,7 @@ namespace CardMaker.Forms
                     break;
                 case ElementType.FormattedText:
                     tabControl.TabPages.Add(tabPageFont);
-                    checkFontAutoScale.Visible = false;
+                    checkFontAutoScale.Visible = true;
                     lblWordSpacing.Visible = true;
                     numericWordSpace.Visible = true;
                     numericLineSpace.Visible = true;
@@ -845,6 +884,9 @@ namespace CardMaker.Forms
                 LayoutManager.Instance.ActiveDeck.ResetMarkupCache(zElement.name));
 
             m_dictionaryControlActions.Add(checkJustifiedText, zElement =>
+                LayoutManager.Instance.ActiveDeck.ResetMarkupCache(zElement.name));
+
+            m_dictionaryControlActions.Add(checkFontAutoScale, zElement =>
                 LayoutManager.Instance.ActiveDeck.ResetMarkupCache(zElement.name));
         }
 
@@ -953,20 +995,37 @@ namespace CardMaker.Forms
         {
             if (null != zElement)
             {
+                var listControlsChanges = new List<Control>();
                 m_bFireElementChangeEvents = false;
-                numericElementX.Value = zElement.x;
-                numericElementY.Value = zElement.y;
-                numericElementW.Value = zElement.width;
-                numericElementH.Value = zElement.height;
-                numericElementRotation.Value = (decimal)zElement.rotation;
+                if (AssignNumericIfDifferent(numericElementX, zElement.x)) listControlsChanges.Add(numericElementX);
+                if (AssignNumericIfDifferent(numericElementY, zElement.y)) listControlsChanges.Add(numericElementY);
+                if (AssignNumericIfDifferent(numericElementW, zElement.width)) listControlsChanges.Add(numericElementW);
+                if (AssignNumericIfDifferent(numericElementH, zElement.height)) listControlsChanges.Add(numericElementH);
+                if (AssignNumericIfDifferent(numericElementRotation, (decimal)zElement.rotation)) listControlsChanges.Add(numericElementRotation);
                 m_bFireElementChangeEvents = true;
 
                 // TODO: if the value does not actually change this applies an update for no specific reason... (tbd)
-                PerformControlChangeActions(zElement, numericElementX, numericElementY, numericElementW, numericElementH, numericElementRotation);
+                PerformControlChangeActions(zElement, listControlsChanges.ToArray());
             }
             LayoutManager.Instance.FireLayoutUpdatedEvent(true);
         }
-        
+
+        /// <summary>
+        /// Assigns the specified value to the numeric if the numeric does not already have the value
+        /// </summary>
+        /// <param name="numericControl">The numeric to update</param>
+        /// <param name="nValue">The value to set on the numeric</param>
+        /// <returns>true if the value changed, false otherwise</returns>
+        private bool AssignNumericIfDifferent(NumericUpDown numericControl, decimal nValue)
+        {
+            if (numericControl.Value != nValue)
+            {
+                numericControl.Value = nValue;
+                return true;
+            }
+            return false;
+        }
+
         /// <summary>
         /// Perform any actions associated with the specified control using the element as a parameter
         /// </summary>
@@ -1038,7 +1097,7 @@ namespace CardMaker.Forms
                         checkJustifiedText.Visible = false;
                         break;
                     case ElementType.FormattedText:
-                        checkFontAutoScale.Visible = false;
+                        checkFontAutoScale.Visible = true;
                         lblWordSpacing.Visible = true;
                         numericWordSpace.Visible = true;
                         checkJustifiedText.Visible = true;

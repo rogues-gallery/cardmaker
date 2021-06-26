@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,18 +24,33 @@
 
 using System.Drawing;
 using System.Text;
+using Google.Apis.Drive.v3;
+using Google.Apis.Sheets.v4;
 
 namespace CardMaker.Data
 {
     public static class CardMakerConstants
     {
-        public const string GOOGLE_REFERENCE = "google";
-        public const char GOOGLE_REFERENCE_SPLIT_CHAR = ';';
+        public const string APPLICATION_NAME = "CardMaker";
         public static readonly Encoding XML_ENCODING = Encoding.UTF8;
         public const string VISIBLE_SETTING = ".visible";
         public const char CHAR_FILE_SPLIT = '|';
         public const int MAX_RECENT_PROJECTS = 10;
         public const string GOOGLE_CACHE_FILE = ".CardMakerGoogleCache.dat";
         public static readonly Color NoColor = Color.FromArgb(0, 0, 0, 0);
+
+        // Google connectivity constants
+        public const string GOOGLE_CLIENT_ID = "455195524701-cmdvv6fl5ru9uftin99kjmhojt36mnm9.apps.googleusercontent.com";
+
+        public static readonly string[] GOOGLE_SCOPES = new string[]
+            {SheetsService.Scope.SpreadsheetsReadonly, DriveService.Scope.DriveReadonly};
+
+    }
+
+    public static class ProgressName
+    {
+        public const string REFERENCE_DATA = "Reference Data";
+        public const string LAYOUT = "Layout";
+        public const string CARD = "Card";
     }
 }

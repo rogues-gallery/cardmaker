@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,6 +45,11 @@ namespace CardMaker.Forms
         private void btnOK_Click(object sender, EventArgs e)
         {
             DialogResult = DialogResult.OK;
+        }
+
+        private void btnCancel_Click(object sender, EventArgs e)
+        {
+            DialogResult = DialogResult.Cancel;
         }
 
         private void btnBrowse_Click(object sender, EventArgs e)

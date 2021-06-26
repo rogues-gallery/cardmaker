@@ -4,9 +4,13 @@ CardMaker is an application that generates graphics via data sources. It has a g
 
 This application was created to help me generate components for a board game. You can put all of your variable data into a CSV or Google Spreadsheet and then create layouts in CardMaker. This separates your layout and data so you do not have to manually re-create each card. 
 
+Command line based export support is in development (coming soon!). Soon you will be able to build CardMaker into a workflow!
+
 ## Download
 
-Latest stable (I hope) release binary: [Download 1.0.0.2](https://github.com/nhmkdev/cardmaker/releases/tag/v.1.0.0.2)
+Latest stable (I hope) release binary: [Download 1.1.0.0](https://github.com/nhmkdev/cardmaker/releases/tag/v.1.1.0.0)
+
+Latest releases (may be a bit unstable): [Download Releases](https://github.com/nhmkdev/cardmaker/releases)
 
 [Download The Game Crafter templates for CardMaker](https://raw.githubusercontent.com/wiki/nhmkdev/cardmaker/CardMaker_TGC_Templates.zip)
 
@@ -33,7 +37,7 @@ Note: The code that is submitted may not match the latest binary.
 
 ## Code Status
 
-Compiles with Visual Studio Express Desktop Edition / Visual Studio 2012
+Compiles with Visual Studio Community Edition 2019
 
 See more details in the [Developers Section](https://github.com/nhmkdev/cardmaker/wiki/developers)
 
@@ -57,9 +61,19 @@ You will need to modify this code to correctly use your application.
 
 CardMaker played some role in the development of these games (prototyping or otherwise). Let me know if you have a game that should be listed here.
 
-[Cardpocalypse](http://cardpocalyp.se/) & [Cardpocalypse Steam Link](https://store.steampowered.com/app/904400/Cardpocalypse/)<br/>
-[Cave Paintings](http://rnrgames.com/cave-paintings)<br/>
-[Iliad: Heroes of Troy](http://www.escapevelocitygames.com/iliad/)<br/>
+| Game Link(s) |
+| --- |
+| [Cardpocalypse](http://cardpocalyp.se/) & [Cardpocalypse Steam Link](https://store.steampowered.com/app/904400/Cardpocalypse/) |
+| [Cave Paintings](http://rnrgames.com/cave-paintings) |
+| [Iliad: Heroes of Troy](http://www.escapevelocitygames.com/iliad/)<br/> |
+| [Town Builder: Coevorden](https://boardgamegeek.com/boardgame/255633/town-builder-coevorden) & [(Publisher page)](http://www.firstfishgames.com/our-games/town-builder-coevorden/) |
+| [NEVO](https://www.thegamecrafter.com/games/nevo) |
+| [COBRA](https://www.thegamecrafter.com/games/cobra1) |
+| [Context Switch](https://www.thegamecrafter.com/games/context-switch) |
+| [Executive Shuffle](https://www.thegamecrafter.com/games/executive-shuffle) |
+| [Fairness](https://www.thegamecrafter.com/games/fairness) |
+| [Root Cause Analysis Team](https://www.thegamecrafter.com/games/root-cause-analysis-team) |
+| [Hard Stop](https://www.thegamecrafter.com/games/hard-stop) |
 
 ## History
 
@@ -77,10 +91,14 @@ CardMaker played some role in the development of these games (prototyping or oth
 
 ## Special Thanks
 
-* Eric Raue
+* Eric Raué
 * Kolja Geldmacher
 * Everyone that has contributed to the project through emailing bugs and requesting features
 
 ## Original Author
 
 CardMaker was originally created in 2009 by Tim Stair.
+
+## Disclaimer
+
+I am providing code in the repository to you under an open source license. Because this is my personal repository, the license you receive to my code is from me and not my employer.

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -79,6 +79,7 @@ namespace CardMaker.Forms
             this.exportCardLayoutAsPDFToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem4 = new System.Windows.Forms.ToolStripSeparator();
             this.addReferenceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.addExcelReferenceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.addGoogleSpreadsheetReferenceToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem3 = new System.Windows.Forms.ToolStripSeparator();
             this.toolStripMenuItemSetLayoutNameFormat = new System.Windows.Forms.ToolStripMenuItem();
@@ -179,6 +180,7 @@ namespace CardMaker.Forms
             this.exportCardLayoutAsPDFToolStripMenuItem,
             this.toolStripMenuItem4,
             this.addReferenceToolStripMenuItem,
+            this.addExcelReferenceToolStripMenuItem,
             this.addGoogleSpreadsheetReferenceToolStripMenuItem,
             this.toolStripMenuItem3,
             this.toolStripMenuItemSetLayoutNameFormat});
@@ -251,6 +253,13 @@ namespace CardMaker.Forms
             this.addReferenceToolStripMenuItem.Size = new System.Drawing.Size(258, 22);
             this.addReferenceToolStripMenuItem.Text = "Add Reference...";
             this.addReferenceToolStripMenuItem.Click += new System.EventHandler(this.addReferenceToolStripMenuItem_Click);
+            // 
+            // addExcelReferenceToolStripMenuItem
+            // 
+            this.addExcelReferenceToolStripMenuItem.Name = "addExcelReferenceToolStripMenuItem";
+            this.addExcelReferenceToolStripMenuItem.Size = new System.Drawing.Size(258, 22);
+            this.addExcelReferenceToolStripMenuItem.Text = "Add Excel Reference...";
+            this.addExcelReferenceToolStripMenuItem.Click += new System.EventHandler(this.addExcelReferenceToolStripMenuItem_Click);
             // 
             // addGoogleSpreadsheetReferenceToolStripMenuItem
             // 
@@ -333,6 +342,7 @@ namespace CardMaker.Forms
         private ToolStripMenuItem removeCardLayoutToolStripMenuItem;
         private ToolStripMenuItem defineAsTemplateLayoutToolStripMenuItem;
         private ToolStripMenuItem addReferenceToolStripMenuItem;
+        private ToolStripMenuItem addExcelReferenceToolStripMenuItem;
         private ToolStripMenuItem exportCardLayoutAsImagesToolStripMenuItem;
         private ToolStripMenuItem setAsDefaultReferenceToolStripMenuItem;
         private ToolStripMenuItem removeReferenceToolStripMenuItem;

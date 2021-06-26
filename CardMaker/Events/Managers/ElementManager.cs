@@ -1,7 +1,7 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using CardMaker.Card;
 using CardMaker.Data;
 using CardMaker.Events.Args;
@@ -83,8 +84,20 @@ namespace CardMaker.Events.Managers
         /// <param name="listElements">The elements to indicate as selected</param>
         public void FireElementSelectedEvent(List<ProjectLayoutElement> listElements)
         {
-            m_listSelectedElements = listElements;
-            ElementSelected?.Invoke(this, new ElementEventArgs(listElements));
+            if (listElements == null)
+            {
+                m_listSelectedElements = listElements;
+            }
+            else
+            {
+                m_listSelectedElements = new List<ProjectLayoutElement>();
+                foreach (var zElement in listElements)
+                {
+                    m_listSelectedElements.Add(ProjectManager.Instance.LookupElementReference(zElement));
+                }
+            }
+
+            ElementSelected?.Invoke(this, new ElementEventArgs(m_listSelectedElements));
         }
 
         /// <summary>

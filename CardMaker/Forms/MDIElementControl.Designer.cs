@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // The MIT License (MIT)
 //
-// Copyright (c) 2019 Tim Stair
+// Copyright (c) 2021 Tim Stair
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -338,7 +338,7 @@ namespace CardMaker.Forms
             // 
             // checkFontAutoScale
             // 
-            this.checkFontAutoScale.Location = new System.Drawing.Point(344, 32);
+            this.checkFontAutoScale.Location = new System.Drawing.Point(627, 30);
             this.checkFontAutoScale.Name = "checkFontAutoScale";
             this.checkFontAutoScale.Size = new System.Drawing.Size(97, 20);
             this.checkFontAutoScale.TabIndex = 45;
