@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 //#define LOG_CACHE_MISSES
-#define LOG_CACHE_ACTIONS
+//#define LOG_CACHE_ACTIONS
 
 using System;
 using System.Collections.Concurrent;
@@ -175,7 +175,9 @@ namespace CardMaker.Card.ImageLoad
             // draw the source image into the destination with the desired opacity
             zGraphics.DrawImage(zSourceBitmap, new Rectangle(0, 0, nTargetWidth, nTargetHeight), 0, 0, zSourceBitmap.Width, zSourceBitmap.Height, GraphicsUnit.Pixel,
                 zImageAttributes);
+#if LOG_CACHE_ACTIONS
             Logger.AddLogLine($"Add custom image key to cache: {sKey}");
+#endif
             // CUSTOM IMAGE CACHE
             CacheImage(s_dictionaryCustomImages, zImageLoader, sKey, sFile, zDestinationBitmap, zBaseImageCacheEntry.EntryType);
             zBaseImageCacheEntry.AddDependentCustomCacheKey(sKey);
