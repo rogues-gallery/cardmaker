@@ -1,5 +1,8 @@
 Card Maker Version History
 --------------------------
+1.6.0.0
+- Add ability to use graphic files from a public url (streamed/cached in memory)
+
 1.5.0.0
 - Add ability to provide additional columns for a define (creating an object with fields)
 - Add ability to specify multiple define files for the project
